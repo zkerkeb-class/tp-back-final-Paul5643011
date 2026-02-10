@@ -14,8 +14,19 @@ app.get('/', (req, res) => {
 
 app.get('/pokemons', async (req, res) => {
   try {
-    const pokemons = await pokemon.find({});
-    res.json(pokemons);
+    // Server-side pagination: accept ?page=1&limit=20
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit, 10) || 20);
+    const skip = (page - 1) * limit;
+
+    const [results, totalCount] = await Promise.all([
+      pokemon.find({}).skip(skip).limit(limit),
+      pokemon.countDocuments({})
+    ]);
+
+    const totalPages = Math.ceil(totalCount / limit);
+
+    res.json({ results, totalCount, page, totalPages });
   } catch (error) {
     res.status(500).json({ error: 'Internal Server Error' });
   }
